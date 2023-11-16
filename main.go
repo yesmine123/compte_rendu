@@ -1,3 +1,5 @@
+// main.go
+
 package main
 
 import (
@@ -5,18 +7,66 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sync"
 )
 
 const filename = "dictionary.json"
 
 func main() {
 	d := dictionary.New(filename)
-	reader := bufio.NewReader(os.Stdin)
+	var wg sync.WaitGroup
+	userInputDone := make(chan struct{})
 
-	actionAdd(d, reader)
-	actionDefine(d, reader)
-	actionRemove(d, reader)
+	wg.Add(3)
+
+	var reader = bufio.NewReader(os.Stdin)
+
+	go func() {
+		defer wg.Done()
+		userInput(d, reader, userInputDone)
+	}()
+
+	go func() {
+		defer wg.Done()
+		<-userInputDone // Attend que userInput signale qu'il a terminé
+		actionAdd(d, reader)
+	}()
+
+	go func() {
+		defer wg.Done()
+		<-userInputDone // Attend que userInput signale qu'il a terminé
+		actionRemove(d, reader)
+	}()
+
+	wg.Wait()
+
 	actionList(d)
+}
+
+// ...
+
+func userInput(d *dictionary.Dictionary, reader *bufio.Reader, done chan struct{}) {
+	for {
+		fmt.Print("Choisissez une action (1: Ajouter, 2: Supprimer, 3: Quitter): ")
+		var choice int
+		_, err := fmt.Fscanf(reader, "%d\n", &choice)
+		if err != nil {
+			fmt.Println("Erreur de saisie.")
+			continue
+		}
+
+		switch choice {
+		case 1:
+			actionAdd(d, reader)
+		case 2:
+			actionRemove(d, reader)
+		case 3:
+			close(done) // Ferme le canal pour signaler que l'entrée utilisateur est terminée
+			return
+		default:
+			fmt.Println("Choix invalide.")
+		}
+	}
 }
 
 func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
@@ -27,18 +77,6 @@ func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
 	definition, _ := reader.ReadString('\n')
 
 	d.Add(word, definition)
-}
-
-func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
-	fmt.Print("Mot à rechercher : ")
-	word, _ := reader.ReadString('\n')
-
-	definition, err := d.Get(word)
-	if err == nil {
-		fmt.Printf("La définition de %s est: %s\n", word, definition)
-	} else {
-		fmt.Printf("Mot non trouvé: %s\n", word)
-	}
 }
 
 func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader) {

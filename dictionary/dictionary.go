@@ -20,12 +20,41 @@ func (e Entry) String() string {
 type Dictionary struct {
 	filename string
 	entries  map[string]Entry
+	addCh    chan entryOperation
+	removeCh chan string
+}
+
+type entryOperation struct {
+	word       string
+	definition string
 }
 
 func New(filename string) *Dictionary {
-	return &Dictionary{
+	d := &Dictionary{
 		filename: filename,
 		entries:  make(map[string]Entry),
+		addCh:    make(chan entryOperation),
+		removeCh: make(chan string),
+	}
+
+	go d.startWorker()
+	return d
+}
+
+func (d *Dictionary) startWorker() {
+	for {
+		select {
+		case op := <-d.addCh:
+			d.load()
+			entry := Entry{Definition: op.definition}
+			d.entries[op.word] = entry
+			d.save()
+
+		case word := <-d.removeCh:
+			d.load()
+			delete(d.entries, word)
+			d.save()
+		}
 	}
 }
 
@@ -53,23 +82,15 @@ func (d *Dictionary) save() error {
 }
 
 func (d *Dictionary) Add(word, definition string) {
-	d.load() // Charger les données depuis le fichier
+	d.addCh <- entryOperation{word, definition}
+}
 
-	entry := Entry{
-		Definition: definition,
-	}
-	d.entries[word] = entry
-
-	err := d.save() // Sauvegarder les données dans le fichier
-	if err != nil {
-		fmt.Println("Erreur lors de la sauvegarde dans le fichier:", err)
-	}
-
-	fmt.Println("Mot ajouté avec succès.")
+func (d *Dictionary) Remove(word string) {
+	d.removeCh <- word
 }
 
 func (d *Dictionary) Get(word string) (Entry, error) {
-	d.load() // Charger les données depuis le fichier
+	d.load()
 
 	entry, found := d.entries[word]
 	if found {
@@ -78,21 +99,8 @@ func (d *Dictionary) Get(word string) (Entry, error) {
 	return Entry{}, fmt.Errorf("Mot non trouvé: %s", word)
 }
 
-func (d *Dictionary) Remove(word string) {
-	d.load() // Charger les données depuis le fichier
-
-	delete(d.entries, word)
-
-	err := d.save() // Sauvegarder les données dans le fichier
-	if err != nil {
-		fmt.Println("Erreur lors de la sauvegarde dans le fichier:", err)
-	}
-
-	fmt.Printf("Le mot %s a été supprimé.\n", word)
-}
-
 func (d *Dictionary) List() {
-	d.load() // Charger les données depuis le fichier
+	d.load()
 
 	var words []string
 	for word := range d.entries {
