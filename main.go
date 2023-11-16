@@ -7,8 +7,10 @@ import (
 	"os"
 )
 
+const filename = "dictionary.json"
+
 func main() {
-	d := dictionary.New()
+	d := dictionary.New(filename)
 	reader := bufio.NewReader(os.Stdin)
 
 	actionAdd(d, reader)
