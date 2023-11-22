@@ -4,8 +4,10 @@ package main
 
 import (
 	"ESTIAM/dictionary"
+	"ESTIAM/routes"
 	"bufio"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
 )
@@ -14,6 +16,12 @@ const filename = "dictionary.json"
 
 func main() {
 	d := dictionary.New(filename)
+	r := routes.SetupRoutes(d)
+
+	http.Handle("/", r)
+
+	// Démarrer le serveur sur le port 8080
+	http.ListenAndServe(":8080", nil)
 	var wg sync.WaitGroup
 	userInputDone := make(chan struct{})
 
