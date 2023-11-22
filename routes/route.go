@@ -17,6 +17,9 @@ func SetupRoutes(d *dictionary.Dictionary) *mux.Router {
 	// Ajoute le middleware de journalisation à toutes les routes
 	r.Use(middleware.LoggingMiddleware)
 
+	// Ajoute le middleware d'authentification à toutes les routes
+	r.Use(middleware.AuthenticationMiddleware)
+
 	// Route pour ajouter une entrée au dictionnaire (POST)
 	r.HandleFunc("/entry", AddEntryHandler(d)).Methods("POST")
 
