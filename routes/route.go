@@ -4,6 +4,7 @@ package routes
 
 import (
 	"ESTIAM/dictionary"
+	"ESTIAM/middleware"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -12,6 +13,9 @@ import (
 // SetupRoutes configure les routes de l'API
 func SetupRoutes(d *dictionary.Dictionary) *mux.Router {
 	r := mux.NewRouter()
+
+	// Ajoute le middleware de journalisation à toutes les routes
+	r.Use(middleware.LoggingMiddleware)
 
 	// Route pour ajouter une entrée au dictionnaire (POST)
 	r.HandleFunc("/entry", AddEntryHandler(d)).Methods("POST")
